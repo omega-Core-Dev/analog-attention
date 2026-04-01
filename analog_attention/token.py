@@ -7,6 +7,9 @@ class Token:
     def receber_sinal(self, sinal: float) -> None:
         self.sinal_recebido += sinal
 
+    def reset(self) -> None:
+        self.sinal_recebido = 0.0
+
     @property
     def foi_atingido(self) -> bool:
         return self.sinal_recebido > 0

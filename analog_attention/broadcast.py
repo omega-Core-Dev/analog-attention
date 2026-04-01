@@ -41,3 +41,27 @@ def broadcast(
         sinal = intensidade * (1 - t) - ruido
 
     return max(sinal, 0.0)
+
+
+def broadcast_all(
+    tokens: list[Token],
+    intensidade: float,
+    ruido: float = 0.0,
+    falloff: str = "sqrt",
+    d_max: float = 10.0,
+) -> list[float]:
+    """Emite sinal do professor para todos os tokens em batch.
+
+    Args:
+        tokens: Lista de tokens receptores.
+        intensidade: Força do sinal emitido (I).
+        ruido: Ruído subtraído do sinal resultante (η).
+        falloff: Tipo de decaimento — 'quadratic' | 'sqrt' | 'linear'.
+        d_max: Distância máxima de referência (usada por 'sqrt' e 'linear').
+
+    Returns:
+        Lista de sinais calculados, na mesma ordem dos tokens.
+
+    Complexidade: O(n).
+    """
+    return [broadcast(intensidade, t, ruido=ruido, falloff=falloff, d_max=d_max) for t in tokens]

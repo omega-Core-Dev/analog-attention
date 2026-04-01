@@ -1,8 +1,12 @@
 import math
+import warnings
 from .token import Token
 from .scan import scan
 from .broadcast import broadcast
 from .candidate import candidate
+from .spatial import GridIndex
+
+_RAIO_NONE_LIMIAR = 50
 
 
 def _distancia(a: Token, b: Token) -> float:
@@ -44,6 +48,14 @@ def propagate(
 
     Complexidade: O(n) + O(k·r), onde k ≤ n e r ≤ n.
     """
+    if raio is None and len(tokens) > _RAIO_NONE_LIMIAR:
+        warnings.warn(
+            f"raio=None com {len(tokens)} tokens resulta em O(k·n) na propagação social. "
+            "Defina um raio para manter complexidade O(k·r).",
+            RuntimeWarning,
+            stacklevel=2,
+        )
+
     # Fase 1 — scan: constrói mapa de coordenadas (pago uma única vez)
     _coordinate_map = scan(tokens)  # noqa: F841 — disponível para extensões futuras
 
@@ -56,14 +68,22 @@ def propagate(
     candidatos = [t for t in tokens if candidate(t, threshold=threshold)]
 
     # Fase 4 — propagação social: candidatos repassam sinal a vizinhos no raio
-    for origem in candidatos:
-        for vizinho in tokens:
-            if vizinho is origem:
-                continue
-            d = _distancia(origem, vizinho)
-            if raio is not None and d > raio:
-                continue
-            sinal_social = origem.sinal_recebido * fator_social / (d + 1)
-            vizinho.receber_sinal(max(sinal_social, 0.0))
+    if raio is not None:
+        # O(k·r) — índice espacial elimina varredura linear por token
+        idx = GridIndex(tokens, cell_size=raio)
+        for origem in candidatos:
+            for vizinho in idx.vizinhos_no_raio(origem, raio):
+                d = _distancia(origem, vizinho)
+                sinal_social = origem.sinal_recebido * fator_social / (d + 1)
+                vizinho.receber_sinal(max(sinal_social, 0.0))
+    else:
+        # O(k·n) — sem raio, compara com todos (aviso emitido acima para n > limiar)
+        for origem in candidatos:
+            for vizinho in tokens:
+                if vizinho is origem:
+                    continue
+                d = _distancia(origem, vizinho)
+                sinal_social = origem.sinal_recebido * fator_social / (d + 1)
+                vizinho.receber_sinal(max(sinal_social, 0.0))
 
     return tokens

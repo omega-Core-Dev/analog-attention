@@ -10,7 +10,7 @@ Complexidade: O(n) + O(k) + O(k·r)  onde k, r << n
 
 from .token import Token
 from .scan import scan
-from .broadcast import broadcast
+from .broadcast import broadcast, broadcast_all
 from .candidate import candidate
 from .propagate import propagate
 from .compose import compose
@@ -23,6 +23,7 @@ __all__ = [
     "Token",
     "scan",
     "broadcast",
+    "broadcast_all",
     "candidate",
     "propagate",
     "compose",

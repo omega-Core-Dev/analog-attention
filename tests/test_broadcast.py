@@ -1,5 +1,5 @@
 import pytest
-from analog_attention import Token, broadcast
+from analog_attention import Token, broadcast, broadcast_all
 
 
 def test_broadcast_quadratic_origem():
@@ -43,3 +43,21 @@ def test_broadcast_nao_modifica_token():
     t = Token("a", (1.0, 0.0))
     broadcast(5.0, t)
     assert t.sinal_recebido == 0.0
+
+
+def test_broadcast_all_retorna_lista_mesma_ordem():
+    tokens = [Token("a", (0.0, 0.0)), Token("b", (5.0, 0.0)), Token("c", (9.0, 0.0))]
+    sinais = broadcast_all(tokens, intensidade=5.0, falloff="sqrt")
+    assert len(sinais) == 3
+    assert sinais[0] > sinais[1] > sinais[2]
+
+
+def test_broadcast_all_nao_modifica_tokens():
+    tokens = [Token("a", (1.0, 0.0)), Token("b", (2.0, 0.0))]
+    broadcast_all(tokens, intensidade=5.0)
+    for t in tokens:
+        assert t.sinal_recebido == 0.0
+
+
+def test_broadcast_all_lista_vazia():
+    assert broadcast_all([], intensidade=5.0) == []

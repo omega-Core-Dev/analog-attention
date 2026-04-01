@@ -31,3 +31,19 @@ def test_sinal_zero_nao_atingido():
 def test_repr():
     t = Token("e", (1.0, 0.0))
     assert "e" in repr(t)
+
+
+def test_reset_zera_sinal():
+    t = Token("f", (1.0, 0.0))
+    t.receber_sinal(5.0)
+    t.reset()
+    assert t.sinal_recebido == 0.0
+    assert t.foi_atingido is False
+
+
+def test_reset_permite_reusar():
+    t = Token("g", (1.0, 0.0))
+    t.receber_sinal(3.0)
+    t.reset()
+    t.receber_sinal(1.0)
+    assert t.sinal_recebido == pytest.approx(1.0)

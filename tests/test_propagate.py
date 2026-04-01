@@ -1,4 +1,5 @@
 import pytest
+import warnings
 from analog_attention import Token, propagate
 
 
@@ -60,3 +61,20 @@ def test_falloff_linear():
     tokens = make_sala()
     propagate(tokens, intensidade_professor=5.0, falloff="linear")
     assert all(t.sinal_recebido >= 0 for t in tokens)
+
+
+def test_warning_raio_none_muitos_tokens():
+    tokens = [Token(str(i), (float(i), 0.0)) for i in range(60)]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        propagate(tokens, raio=None)
+    assert any(issubclass(warning.category, RuntimeWarning) for warning in w)
+
+
+def test_sem_warning_raio_definido():
+    tokens = [Token(str(i), (float(i), 0.0)) for i in range(60)]
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        propagate(tokens, raio=5.0)
+    runtime_warnings = [x for x in w if issubclass(x.category, RuntimeWarning)]
+    assert len(runtime_warnings) == 0
