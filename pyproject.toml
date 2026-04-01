@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "analog-attention"
+version = "0.2.0"
+description = "Propagação de Atenção por Coordenadas de Token — alternativa O(k) à atenção O(n²)"
+readme = "README.md"
+license = "GPL-3.0"
+authors = [{ name = "Zaqueu Ribeiro da Costa" }]
+requires-python = ">=3.10"
+keywords = ["attention", "transformer", "nlp", "machine-learning", "coordinates"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[tool.setuptools.packages.find]
+include = ["analog_attention*"]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
