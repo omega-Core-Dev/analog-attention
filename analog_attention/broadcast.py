@@ -1,67 +1,60 @@
-import math
-from .token import Token
+"""Broadcast parabólico por frequência.
 
-_FALLOFF_OPTIONS = ("quadratic", "sqrt", "linear")
+O professor emite na frequência dominante da query.
+A ativação de cada token decai parabolicamente pela distância espectral.
+
+σ(f) = I · max(0, 1 − κ · (f_token − f_peak)²) − η
+
+Onde:
+    I     = intensidade
+    κ     = curvatura da parábola (controla largura do feixe)
+    f_peak = frequência dominante da query (professor)
+    η     = ruído
+"""
+import numpy as np
+from .token import Token
+from .signature import correlacao, frequencia_dominante
 
 
 def broadcast(
-    intensidade: float,
+    query: np.ndarray,
     token: Token,
+    intensidade: float = 5.0,
+    curvatura: float = 4.0,
     ruido: float = 0.0,
-    falloff: str = "sqrt",
-    d_max: float = 10.0,
 ) -> float:
-    """Professor envia sinal para um token com falloff por distância.
+    """Ativação parabólica de um token pela query do professor.
 
     Args:
-        intensidade: Força do sinal emitido (I).
-        token: Token receptor.
-        ruido: Ruído subtraído do sinal resultante (η).
-        falloff: Tipo de decaimento — 'quadratic' | 'sqrt' | 'linear'.
-        d_max: Distância máxima de referência (usada por 'sqrt' e 'linear').
+        query:      assinatura de frequência do professor (vetor FFT).
+        token:      token receptor.
+        intensidade: amplitude máxima do sinal (I).
+        curvatura:  quão rápido o sinal cai fora do pico (κ).
+                    Alto κ = feixe estreito. Baixo κ = feixe largo.
+        ruido:      ruído subtraído do resultado (η).
 
     Returns:
-        Sinal calculado (≥ 0).
+        Sinal de ativação ≥ 0.
 
     Complexidade: O(1) por token.
     """
-    if falloff not in _FALLOFF_OPTIONS:
-        raise ValueError(f"falloff deve ser um de {_FALLOFF_OPTIONS}, recebido: {falloff!r}")
+    f_peak = frequencia_dominante(query)
+    f_token = token.frequencia_dominante
 
-    x, y = token.coordenada
-    d = math.hypot(x, y)
-
-    if falloff == "quadratic":
-        sinal = intensidade / (d ** 2 + 1) - ruido
-    elif falloff == "sqrt":
-        t = min(d / d_max, 1.0) if d_max > 0 else 1.0
-        sinal = intensidade * (1 - math.sqrt(t) * 0.75) - ruido
-    else:  # linear
-        t = min(d / d_max, 1.0) if d_max > 0 else 1.0
-        sinal = intensidade * (1 - t) - ruido
-
-    return max(sinal, 0.0)
+    sinal = intensidade * max(0.0, 1.0 - curvatura * (f_token - f_peak) ** 2)
+    return max(sinal - ruido, 0.0)
 
 
 def broadcast_all(
+    query: np.ndarray,
     tokens: list[Token],
-    intensidade: float,
+    intensidade: float = 5.0,
+    curvatura: float = 4.0,
     ruido: float = 0.0,
-    falloff: str = "sqrt",
-    d_max: float = 10.0,
 ) -> list[float]:
-    """Emite sinal do professor para todos os tokens em batch.
-
-    Args:
-        tokens: Lista de tokens receptores.
-        intensidade: Força do sinal emitido (I).
-        ruido: Ruído subtraído do sinal resultante (η).
-        falloff: Tipo de decaimento — 'quadratic' | 'sqrt' | 'linear'.
-        d_max: Distância máxima de referência (usada por 'sqrt' e 'linear').
+    """Broadcast parabólico para todos os tokens. O(n).
 
     Returns:
-        Lista de sinais calculados, na mesma ordem dos tokens.
-
-    Complexidade: O(n).
+        Lista de sinais na mesma ordem dos tokens.
     """
-    return [broadcast(intensidade, t, ruido=ruido, falloff=falloff, d_max=d_max) for t in tokens]
+    return [broadcast(query, t, intensidade, curvatura, ruido) for t in tokens]

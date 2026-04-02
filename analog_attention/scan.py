@@ -1,12 +1,11 @@
+import numpy as np
 from .token import Token
 
 
-def scan(tokens: list[Token]) -> dict[str, tuple[float, float]]:
-    """Constrói índice de coordenadas — pago uma única vez.
-
-    Complexidade: O(n)
+def scan(tokens: list[Token]) -> dict[str, np.ndarray]:
+    """Constrói índice de assinaturas de frequência — O(n).
 
     Returns:
-        { token.nome: token.coordenada } para todos os tokens.
+        { token.nome: token.assinatura } para todos os tokens.
     """
-    return {token.nome: token.coordenada for token in tokens}
+    return {t.nome: t.assinatura for t in tokens}
