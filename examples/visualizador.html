@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>analog-attention · Frequency Visualizer</title>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --border: #1e1e2e;
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --pass: #10b981;
+    --fail: #334155;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', monospace; min-height: 100vh; }
+
+  header { padding: 1.5rem 2rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 1rem; }
+  header h1 { font-size: 1rem; font-weight: 600; color: var(--accent); letter-spacing: .05em; }
+  header span { font-size: .75rem; color: var(--muted); }
+
+  .main { display: grid; grid-template-columns: 1fr auto 1fr; gap: 0; padding: 2rem; align-items: start; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: .75rem; padding: 1.25rem; }
+  .panel h2 { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: 1rem; }
+
+  .input-row { display: flex; gap: .5rem; margin-bottom: 1rem; }
+  .input-row input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); padding: .5rem .75rem; border-radius: .375rem;
+    font-family: inherit; font-size: .85rem; outline: none;
+  }
+  .input-row input:focus { border-color: var(--accent); }
+  .input-row button {
+    background: var(--accent); border: none; color: #fff;
+    padding: .5rem 1rem; border-radius: .375rem; cursor: pointer;
+    font-family: inherit; font-size: .8rem; white-space: nowrap;
+  }
+  .input-row button:hover { opacity: .85; }
+
+  /* Spectrum canvas */
+  .canvas-wrap { position: relative; margin-bottom: .75rem; }
+  .canvas-label { font-size: .65rem; color: var(--muted); margin-bottom: .3rem; }
+  canvas { display: block; width: 100%; border-radius: .375rem; background: var(--bg); }
+
+  /* Token cards */
+  .token-grid { display: grid; gap: .4rem; }
+  .token-card {
+    display: grid; grid-template-columns: 1fr auto auto auto auto auto;
+    gap: .5rem; align-items: center;
+    padding: .4rem .6rem; border-radius: .375rem;
+    border: 1px solid var(--border); font-size: .72rem;
+  }
+  .token-card.passa { border-color: var(--pass); background: rgba(16,185,129,.05); }
+  .token-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag {
+    font-size: .6rem; padding: .1rem .35rem; border-radius: 99px;
+    border: 1px solid; white-space: nowrap;
+  }
+  .val { color: var(--muted); font-size: .68rem; text-align: right; white-space: nowrap; }
+  .mark { font-size: .8rem; }
+
+  /* Anchor bridge */
+  .anchor-bridge {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 0 1rem; gap: .5rem; min-width: 120px;
+  }
+  .anchor-pill {
+    background: var(--surface); border: 1px solid var(--accent2);
+    border-radius: .5rem; padding: .75rem 1rem; text-align: center;
+    font-size: .7rem; color: var(--accent2); min-width: 100px;
+  }
+  .anchor-pill b { display: block; font-size: .85rem; margin-bottom: .2rem; }
+  .anchor-arrow { color: var(--accent2); font-size: 1.2rem; }
+
+  /* Stats row */
+  .stats { display: flex; gap: 1rem; margin-bottom: .75rem; flex-wrap: wrap; }
+  .stat { font-size: .68rem; }
+  .stat .sv { color: var(--accent2); font-weight: 600; }
+  .stat .sk { color: var(--muted); }
+
+  .empty { color: var(--muted); font-size: .8rem; text-align: center; padding: 2rem; }
+
+  /* Wave class colors */
+  .ONDA_INFRA      { color: #a78bfa; border-color: #a78bfa44; }
+  .ONDA_ULTRA_BAIXA{ color: #8b5cf6; border-color: #8b5cf644; }
+  .ONDA_BAIXA      { color: #60a5fa; border-color: #60a5fa44; }
+  .ONDA_MEDIA_BAIXA{ color: #22d3ee; border-color: #22d3ee44; }
+  .ONDA_MEDIA      { color: #34d399; border-color: #34d39944; }
+  .ONDA_MEDIA_ALTA { color: #fbbf24; border-color: #fbbf2444; }
+  .ONDA_ALTA       { color: #f87171; border-color: #f8717144; }
+  .ONDA_ULTRA_ALTA { color: #f472b6; border-color: #f472b644; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>analog-attention</h1>
+  <span>frequency visualizer · v0.3.0</span>
+</header>
+
+<div class="main">
+  <div class="panel" id="panel1">
+    <h2>Ciclo 1 — Input</h2>
+    <div class="input-row">
+      <input id="input1" type="text" placeholder="digite o texto do ciclo 1..." value="quero entender como a atenção funciona nesse sistema">
+      <button onclick="rodar()">Analisar</button>
+    </div>
+    <div id="stats1" class="stats"></div>
+    <div class="canvas-wrap">
+      <div class="canvas-label">Espectro de frequência · tokens</div>
+      <canvas id="spectrum1" height="140"></canvas>
+    </div>
+    <div class="canvas-wrap">
+      <div class="canvas-label">Limiar parabólico · f_peak</div>
+      <canvas id="parabola1" height="100"></canvas>
+    </div>
+    <div id="tokens1" class="token-grid"><div class="empty">aguardando input…</div></div>
+  </div>
+
+  <div class="anchor-bridge" id="bridge">
+    <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Âncora</div>
+    <div class="anchor-arrow">↓</div>
+    <div class="anchor-pill" id="anchorBox"><b>—</b>aguardando ciclo 1</div>
+    <div class="anchor-arrow">↓</div>
+    <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Pegada</div>
+  </div>
+
+  <div class="panel" id="panel2">
+    <h2>Ciclo 2 — Contexto</h2>
+    <div class="input-row">
+      <input id="input2" type="text" placeholder="digite o texto do ciclo 2..." value="a frequência define quem responde ao professor">
+      <button onclick="rodar()">Analisar</button>
+    </div>
+    <div id="stats2" class="stats"></div>
+    <div class="canvas-wrap">
+      <div class="canvas-label">Espectro de frequência · tokens</div>
+      <canvas id="spectrum2" height="140"></canvas>
+    </div>
+    <div class="canvas-wrap">
+      <div class="canvas-label">Limiar parabólico · f_peak</div>
+      <canvas id="parabola2" height="100"></canvas>
+    </div>
+    <div id="tokens2" class="token-grid"><div class="empty">aguardando ciclo 1…</div></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CORE — replica exata do Python analog_attention
+// ═══════════════════════════════════════════════════════
+
+const N = 16;
+
+const WAVE_CLASSES = [
+  { nome:"ONDA_INFRA",       min:0.000, max:0.100, subs:["infra_0","infra_1"],          hex:"#a78bfa" },
+  { nome:"ONDA_ULTRA_BAIXA", min:0.100, max:0.200, subs:["ub_0","ub_1"],               hex:"#8b5cf6" },
+  { nome:"ONDA_BAIXA",       min:0.200, max:0.350, subs:["b_0","b_1","b_2"],            hex:"#60a5fa" },
+  { nome:"ONDA_MEDIA_BAIXA", min:0.350, max:0.500, subs:["mb_0","mb_1","mb_2"],         hex:"#22d3ee" },
+  { nome:"ONDA_MEDIA",       min:0.500, max:0.650, subs:["m_0","m_1","m_2"],            hex:"#34d399" },
+  { nome:"ONDA_MEDIA_ALTA",  min:0.650, max:0.800, subs:["ma_0","ma_1","ma_2"],         hex:"#fbbf24" },
+  { nome:"ONDA_ALTA",        min:0.800, max:0.920, subs:["a_0","a_1"],                  hex:"#f87171" },
+  { nome:"ONDA_ULTRA_ALTA",  min:0.920, max:1.001, subs:["ua_0","ua_1"],               hex:"#f472b6" },
+];
+
+function computeSig(texto) {
+  const mag = new Float64Array(N), fase = new Float64Array(N);
+  for (let i = 0; i < texto.length; i++) {
+    const code = texto.charCodeAt(i) % 128;
+    const bin  = code % N;
+    mag[bin]  += 1;
+    fase[bin] += (i / Math.max(texto.length - 1, 1)) * 2 * Math.PI;
+  }
+  const total = mag.reduce((a,b) => a+b, 0);
+  if (total > 0) for (let i=0; i<N; i++) mag[i] /= total;
+  for (let i=0; i<N; i++) fase[i] = (fase[i] % (2*Math.PI)) - Math.PI;
+  return { mag, fase };
+}
+
+function freqDom(mag) {
+  const m = Float64Array.from(mag); m[0] = 0;
+  const total = m.reduce((a,b) => a+b, 0);
+  if (total === 0) return 0;
+  let c = 0;
+  for (let i=0; i<m.length; i++) c += i * m[i];
+  return Math.min(Math.max(c / total / (N-1), 0), 1);
+}
+
+function estabilidade(mag) {
+  const total = mag.reduce((a,b) => a+b, 0);
+  if (total === 0) return 0;
+  let H = 0;
+  for (const m of mag) { const p = m/total; if (p>0) H -= p * Math.log(p); }
+  const Hmax = Math.log(mag.length);
+  return Hmax > 0 ? 1 - H/Hmax : 0;
+}
+
+function classificar(freq) {
+  for (const wc of WAVE_CLASSES)
+    if (freq >= wc.min && freq < wc.max) {
+      const idx = Math.min(Math.floor((freq - wc.min)/(wc.max - wc.min) * wc.subs.length), wc.subs.length-1);
+      return { classe: wc.nome, sub: wc.subs[idx], hex: wc.hex };
+    }
+  return { classe:"ONDA_ULTRA_ALTA", sub:"ua_1", hex:"#f472b6" };
+}
+
+function correlacao(a, b) {
+  let dot=0, na=0, nb=0;
+  for (let i=0; i<a.length; i++) { dot += a[i]*b[i]; na += a[i]*a[i]; nb += b[i]*b[i]; }
+  if (na===0||nb===0) return 0;
+  return Math.max(0, Math.min(1, dot / (Math.sqrt(na)*Math.sqrt(nb))));
+}
+
+function tokenizar(texto) {
+  const frags = texto.match(/\w+(?:'\w+)*|[^\w\s]/g) || [];
+  const tokens = frags.map(frag => {
+    const { mag, fase } = computeSig(frag);
+    const freq  = freqDom(mag);
+    const estab = estabilidade(mag);
+    const { classe, sub, hex } = classificar(freq);
+    return { nome:frag, mag, fase, classe, sub, hex, freq, estab, sinal:0 };
+  });
+  const nomes = tokens.map(t=>t.nome);
+  tokens.forEach(t => { t.pertenceA = nomes.filter(n=>n!==t.nome); });
+  return tokens;
+}
+
+function processar(texto, ancora=null, {alpha=0.3,I=5,K=4,thr=0.3,hops=3,phi=0.5}={}) {
+  const tokens = tokenizar(texto);
+  if (!tokens.length) return null;
+
+  let query = computeSig(texto).mag;
+
+  if (ancora) {
+    const bl = query.map((q,i) => (1-alpha)*q + alpha*ancora.assinatura[i]);
+    const tot = bl.reduce((a,b)=>a+b,0);
+    query = tot > 0 ? new Float64Array(bl.map(b=>b/tot)) : new Float64Array(bl);
+  }
+
+  const fPeak = freqDom(query);
+
+  // Broadcast parabólico
+  tokens.forEach(t => {
+    t.sinal = Math.max(I * Math.max(0, 1 - K * Math.pow(t.freq - fPeak, 2)), 0);
+  });
+
+  // Candidatos → cadeia harmônica
+  const cands = tokens.filter(t => t.sinal >= thr);
+  cands.forEach(orig => {
+    const vis = new Set([orig.nome]);
+    let cur = orig, s = orig.sinal;
+    for (let h=0; h<hops; h++) {
+      let best=null, bScore=-1;
+      tokens.forEach(t => {
+        if (t.nome===cur.nome||vis.has(t.nome)) return;
+        const sc = correlacao(cur.mag, t.mag);
+        if (sc > bScore) { bScore=sc; best=t; }
+      });
+      if (!best) break;
+      s *= phi; best.sinal += s; vis.add(best.nome); cur = best;
+    }
+  });
+
+  // Limiares parabólicos
+  tokens.forEach(t => {
+    t.limiar = 0.1 + 0.9 * Math.max(0, 1 - K * Math.pow(t.freq - fPeak, 2));
+    t.passa  = t.sinal >= t.limiar;
+  });
+
+  tokens.sort((a,b) => b.sinal - a.sinal);
+
+  const sinalTotal = tokens.reduce((s,t)=>s+t.sinal,0);
+  const ativos = tokens.filter(t=>t.sinal>0);
+
+  const assinCluster = new Float64Array(N);
+  if (ativos.length && sinalTotal > 0)
+    ativos.forEach(t => t.mag.forEach((v,i) => { assinCluster[i] += (t.sinal/sinalTotal)*v; }));
+
+  return {
+    tokens, fPeak, query,
+    sinalTotal: +sinalTotal.toFixed(4),
+    tokensPassaram: tokens.filter(t=>t.passa).length,
+    ancora: { assinatura: assinCluster, fPeak: freqDom(assinCluster), intensidade: sinalTotal, tokensAtivados: ativos.length }
+  };
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAW
+// ═══════════════════════════════════════════════════════
+
+function drawSpectrum(canvasId, tokens, fPeak) {
+  const canvas = document.getElementById(canvasId);
+  const W = canvas.offsetWidth || 400;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = 140 * devicePixelRatio;
+  canvas.style.width = W + 'px';
+  canvas.style.height = '140px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0, 0, W, 140);
+
+  // Grid lines
+  ctx.strokeStyle = '#1e1e2e'; ctx.lineWidth = 1;
+  for (let y=20; y<140; y+=30) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+
+  if (!tokens || !tokens.length) return;
+
+  const barW = (W - 20) / tokens.length;
+  const maxS = Math.max(...tokens.map(t=>t.sinal), 1);
+
+  tokens.forEach((t, i) => {
+    const x = 10 + i * barW;
+    const h = (t.sinal / maxS) * 110;
+    const y = 130 - h;
+
+    // Bar with class color
+    ctx.globalAlpha = t.passa ? 1 : 0.35;
+    ctx.fillStyle = t.hex;
+    ctx.fillRect(x+1, y, barW-3, h);
+
+    // Token name
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = t.passa ? '#e2e8f0' : '#475569';
+    ctx.font = `${Math.min(10, barW*0.9)}px monospace`;
+    ctx.textAlign = 'center';
+    ctx.save();
+    ctx.translate(x + barW/2, 128);
+    ctx.rotate(-Math.PI/4);
+    ctx.fillText(t.nome.substring(0,8), 0, 0);
+    ctx.restore();
+  });
+
+  // f_peak marker
+  const peakX = 10 + fPeak * (W-20);
+  ctx.strokeStyle = '#06b6d4'; ctx.lineWidth = 1.5; ctx.setLineDash([3,3]);
+  ctx.beginPath(); ctx.moveTo(peakX, 0); ctx.lineTo(peakX, 120); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = '#06b6d4'; ctx.font = '9px monospace'; ctx.textAlign = 'center';
+  ctx.fillText(`f_peak ${fPeak.toFixed(3)}`, peakX, 10);
+}
+
+function drawParabola(canvasId, tokens, fPeak, K=4) {
+  const canvas = document.getElementById(canvasId);
+  const W = canvas.offsetWidth || 400;
+  canvas.width = W * devicePixelRatio;
+  canvas.height = 100 * devicePixelRatio;
+  canvas.style.width = W + 'px';
+  canvas.style.height = '100px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  ctx.clearRect(0, 0, W, 100);
+
+  const toX = f => 10 + f * (W-20);
+  const toY = v => 90 - v * 80;
+
+  // Parabola curve
+  ctx.strokeStyle = '#7c3aed'; ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let px=0; px<=W; px++) {
+    const f = (px-10)/(W-20);
+    const v = 0.1 + 0.9 * Math.max(0, 1 - K * Math.pow(f - fPeak, 2));
+    if (px===0) ctx.moveTo(px, toY(v)); else ctx.lineTo(px, toY(v));
+  }
+  ctx.stroke();
+
+  // Token dots
+  if (tokens) tokens.forEach(t => {
+    const x = toX(t.freq);
+    const y = toY(t.sinal / Math.max(...tokens.map(t=>t.sinal), 1));
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI*2);
+    ctx.fillStyle = t.passa ? t.hex : '#334155';
+    ctx.fill();
+    // Label
+    ctx.fillStyle = t.passa ? '#e2e8f0' : '#475569';
+    ctx.font = '8px monospace'; ctx.textAlign = 'center';
+    ctx.fillText(t.nome.substring(0,6), x, y-7);
+  });
+
+  // Axes labels
+  ctx.fillStyle = '#64748b'; ctx.font = '8px monospace';
+  ctx.textAlign = 'left';  ctx.fillText('0', 10, 95);
+  ctx.textAlign = 'right'; ctx.fillText('1', W-10, 95);
+  ctx.textAlign = 'left';  ctx.fillText('freq →', 10, 95);
+}
+
+function renderTokens(containerId, tokens) {
+  const el = document.getElementById(containerId);
+  if (!tokens || !tokens.length) { el.innerHTML = '<div class="empty">sem tokens</div>'; return; }
+  el.innerHTML = tokens.map(t => `
+    <div class="token-card ${t.passa?'passa':''}">
+      <span class="token-name">${t.nome}</span>
+      <span class="tag ${t.classe}">${t.classe.replace('ONDA_','')}</span>
+      <span class="val" title="frequência">${t.freq.toFixed(3)}</span>
+      <span class="val" title="sinal">${t.sinal.toFixed(3)}</span>
+      <span class="val" title="limiar">${t.limiar.toFixed(3)}</span>
+      <span class="mark">${t.passa?'✓':'·'}</span>
+    </div>
+  `).join('');
+}
+
+function renderStats(id, res) {
+  document.getElementById(id).innerHTML = `
+    <div class="stat"><span class="sk">f_peak </span><span class="sv">${res.fPeak.toFixed(4)}</span></div>
+    <div class="stat"><span class="sk">sinal_total </span><span class="sv">${res.sinalTotal.toFixed(2)}</span></div>
+    <div class="stat"><span class="sk">passaram </span><span class="sv">${res.tokensPassaram}/${res.tokens.length}</span></div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN
+// ═══════════════════════════════════════════════════════
+
+let ancora1 = null;
+
+function rodar() {
+  const t1 = document.getElementById('input1').value.trim();
+  const t2 = document.getElementById('input2').value.trim();
+
+  const res1 = t1 ? processar(t1) : null;
+  ancora1 = res1 ? res1.ancora : null;
+  const res2 = t2 ? processar(t2, ancora1) : null;
+
+  // Ciclo 1
+  if (res1) {
+    renderStats('stats1', res1);
+    drawSpectrum('spectrum1', res1.tokens, res1.fPeak);
+    drawParabola('parabola1', res1.tokens, res1.fPeak);
+    renderTokens('tokens1', res1.tokens);
+  }
+
+  // Âncora
+  if (ancora1) {
+    document.getElementById('anchorBox').innerHTML = `
+      <b>f_peak ${ancora1.fPeak.toFixed(4)}</b>
+      intensidade ${ancora1.intensidade.toFixed(2)}<br>
+      tokens ${ancora1.tokensAtivados}
+    `;
+  }
+
+  // Ciclo 2
+  if (res2) {
+    renderStats('stats2', res2);
+    drawSpectrum('spectrum2', res2.tokens, res2.fPeak);
+    drawParabola('parabola2', res2.tokens, res2.fPeak);
+    renderTokens('tokens2', res2.tokens);
+  }
+}
+
+// Roda ao carregar
+window.addEventListener('load', rodar);
+window.addEventListener('resize', rodar);
+</script>
+</body>
+</html>
