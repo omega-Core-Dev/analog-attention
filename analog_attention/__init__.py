@@ -7,7 +7,7 @@ Complexidade: O(n) broadcast + O(k·hops) cadeia
 
 from .token import Token
 from .signature import compute_signature, frequencia_dominante, estabilidade, correlacao
-from .basa import classificar, WAVE_CLASSES
+from .base import classificar, WAVE_CLASSES
 from .tokenizer import tokenizar, assinatura_do_texto
 from .scan import scan
 from .broadcast import broadcast, broadcast_all

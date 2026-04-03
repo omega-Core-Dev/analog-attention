@@ -7,7 +7,7 @@ import re
 import numpy as np
 from .token import Token
 from .signature import compute_signature, frequencia_dominante, estabilidade
-from .basa import classificar
+from .base import classificar
 
 
 def tokenizar(texto: str) -> list[Token]:

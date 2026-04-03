@@ -1,4 +1,4 @@
-from analog_attention.basa import classificar, faixa_da_classe, WAVE_CLASSES
+from analog_attention.base import classificar, faixa_da_classe, WAVE_CLASSES
 
 
 def test_todas_frequencias_tem_classe():
