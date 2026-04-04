@@ -1,289 +1,204 @@
-analog-attention
+# analog-attention
 
-v0.1.0 · GPL-3.0
-
-Propagação de Atenção por Coordenadas de Token
-
----
-
-👤 Autor / Arquiteto
-
-Zaqueu Ribeiro da Costa
+**v0.1.0** · GPL-3.0  
+**Autor / Arquiteto:** Zaqueu Ribeiro da Costa
 
 ---
 
-📌 Conceito Central
+## O que é isso?
 
-Em vez de calcular similaridade entre todos os pares de tokens (O(n²)), o sistema realiza uma varredura inicial que constrói um mapa de coordenadas. A partir desse mapa, a atenção é direcionada por endereçamento direto, não por busca.
+`analog-attention` é um mecanismo de atenção baseado em **assinaturas de frequência**, não em produto de matrizes. É parte de uma arquitetura nova de IA — não compete com Transformers, constrói um conceito diferente.
 
----
-
-🧠 1. Visão Geral
-
-"analog-attention" é uma biblioteca Python que implementa um mecanismo de atenção baseado em propagação por coordenadas, inspirado na dinâmica social de uma sala de aula.
-
-1.1 Problema da Atenção Clássica
-
-Attention(Q, K, V) = softmax(QKᵀ / √dₖ) · V
-
-- Complexidade: O(n²)
-- Cada token compara com todos os outros → alto custo e redundância
+A ideia central: cada palavra tem uma **assinatura de onda**, como uma impressão digital de frequência. A atenção acontece por ressonância entre frequências — não por comparar todos os pares de tokens.
 
 ---
 
-1.2 Proposta
+## Por que isso é diferente de um Transformer?
 
-Substituição por um protocolo em duas fases principais:
-
-- Scan (varredura) → O(n)
-  Constrói mapa de coordenadas (feito uma única vez)
-
-- Broadcast (endereçamento direto) → O(k)
-  Convoca tokens específicos
-
-- Propagate (propagação social) → O(k · r)
-  Tokens repassam sinal localmente
+| Transformer clássico | analog-attention |
+|---|---|
+| Compara todos os tokens entre si — O(n²) | Assinatura por frequência — O(n) |
+| Similaridade por produto escalar | Ressonância parabólica de frequências |
+| Embeddings aprendidos (gradiente) | Assinaturas calculadas (sem treino) |
+| Precisa de GPU e milhões de parâmetros | Roda em tempo real, leve |
+| Resposta via predição de tokens | Resposta via estado interno (NEC) |
 
 ---
 
-🎓 Analogia
+## Como funciona — fluxo completo
 
-«Professor chama alunos → alunos próximos propagam → surge um padrão coletivo»
-
----
-
-🏗️ 2. Arquitetura
-
-2.1 Componentes
-
-Componente| Função
-Token| Unidade com coordenada e sinal
-scan()| Cria mapa de coordenadas
-broadcast()| Envia sinal inicial
-candidate()| Filtra tokens relevantes
-propagate()| Propagação social
-compose()| Agrega resultado
-
----
-
-2.2 Fluxo
-
-INPUT
-  ↓
-scan(tokens)         → O(n)
-  ↓
-broadcast()          → O(k)
-  ↓
-candidate()          → O(k)
-  ↓
-propagate()          → O(k·r)
-  ↓
-compose()
-  ↓
-OUTPUT
+```
+Texto de entrada
+      ↓
+  Tokenizador
+  (cada palavra vira um Token com assinatura de frequência)
+      ↓
+  BASE (Base de Assinaturas de Onda)
+  (classifica cada token em uma classe de onda: ONDA_INFRA → ONDA_ULTRA_ALTA)
+      ↓
+  Broadcast Parabólico
+  (tokens com frequência próxima ao pico da query recebem mais sinal)
+      ↓
+  Propagação Harmônica em Cadeia
+  (tokens ativados propagam sinal para vizinhos harmonicamente similares)
+      ↓
+  Log de Frequência + Âncora de Contexto
+  (resultado do ciclo + memória para o próximo ciclo)
+      ↓
+  NEC — Núcleo Emocional-Cognitivo
+  (gera resposta por estado interno, sem LLM)
+```
 
 ---
 
-2.3 Complexidade
+## Estrutura de arquivos
 
-Sistema| Complexidade
-Transformer| O(n²)
-Sparse Attention| O(n log n)
-analog-attention| O(n) + O(k) + O(k·r)
+```
+analog_attention/
+├── signature.py      — Calcula assinatura de frequência (histograma de caracteres → FFT)
+├── base.py           — BASE: mapa estático de classes de onda (8 classes, frequência 0→1)
+├── token.py          — Token: unidade com assinatura, fase, classe de onda, sinal recebido
+├── tokenizer.py      — Tokenizador: texto → lista de Tokens classificados
+├── broadcast.py      — Broadcast parabólico: σ = I · max(0, 1 − κ · (f_token − f_peak)²)
+├── candidate.py      — Filtra tokens com sinal acima do limiar
+├── propagate.py      — Propagação em cadeia harmônica (cosine similarity entre assinaturas)
+├── output.py         — FrequencyLog + AncoradeContexto (memória entre ciclos)
+├── pipeline.py       — Pipeline completo: texto → log + âncora
+├── scan.py           — Varredura inicial de tokens
+└── compose.py        — Composição de resultado final
 
----
+analog_attention/nec/
+├── emocional.py      — Estágio 01: Estrutura Emocional (valência, intensidade, coerência...)
+├── estado.py         — Estágio 02: Estado Atual + detector de salto de contexto
+├── associativo.py    — Estágio 03: Referência Associativa (delta_novidade, D1/D2)
+├── operador.py       — Operador Θ: combina EE + EA + RA → campo P normalizado
+├── projecao.py       — Estágio 04: Projeção de Possíveis (seleciona modo de resposta)
+├── geracao.py        — Estágio 05: Gera resposta por estado (sem LLM)
+└── nucleo.py         — Orquestrador: roda todos os estágios em sequência
 
-🔌 3. API Pública
+examples/
+├── prototipo_entrada.py  — Exemplo básico de pipeline (entrada de texto)
+├── nec_demo.py           — Demo do NEC com 3 ciclos e âncora de contexto
+└── visualizador.html     — Visualizador interativo (abre no navegador, sem servidor)
 
-Classe Token
-
-class Token:
-    def __init__(self, nome: str, coordenada: tuple[float, float])
-    def receber_sinal(self, sinal: float) -> None
-
-    sinal_recebido: float
-    foi_atingido: bool
-
----
-
-scan()
-
-def scan(tokens: list[Token]) -> dict[str, tuple]:
-    """Retorna mapa de coordenadas"""
-
----
-
-broadcast()
-
-def broadcast(intensidade, token, ruido=0.0, falloff='sqrt'):
-
----
-
-candidate()
-
-def candidate(token, threshold=0.4) -> bool:
-
----
-
-propagate()
-
-def propagate(tokens, intensidade_professor=5.0, ...):
+tests/
+├── test_signature.py     — Testes da assinatura de frequência
+├── test_base.py          — Testes da BASE de classes de onda
+├── test_tokenizer.py     — Testes do tokenizador
+├── test_pipeline.py      — Testes do pipeline completo
+└── test_nec.py           — Testes do NEC (10 testes)
+```
 
 ---
 
-⚙️ 4. Implementação Atual (v0.1.0)
+## Conceitos principais explicados
 
-import math
+### Assinatura de frequência
 
-class Token:
-    def __init__(self, nome, coordenada):
-        self.nome = nome
-        self.coordenada = coordenada
-        self.sinal_recebido = 0
+Cada token (palavra) é convertido em um vetor de frequência usando histograma de caracteres. A frequência dominante é o centroide espectral — um número entre 0 e 1 que representa "onde" essa palavra vive no espectro.
 
-    def receber_sinal(self, sinal):
-        self.sinal_recebido += sinal
+Palavras com caracteres de baixo código ASCII tendem a frequências baixas. Palavras com caracteres de alto código tendem a frequências altas. Isso é determinístico — não precisa de treino.
 
+### BASE (Base de Assinaturas de Onda)
 
-def atenção_professor(intensidade, token, ruído=0):
-    x, y = token.coordenada
-    distancia = math.hypot(x, y)
-    sinal = intensidade / (distancia**2 + 1) - ruído
-    return max(sinal, 0)
+8 classes de onda cobrindo o espectro [0, 1]:
 
+| Classe | Faixa | Significado |
+|---|---|---|
+| ONDA_INFRA | 0.000 – 0.100 | Frequência mínima |
+| ONDA_ULTRA_BAIXA | 0.100 – 0.200 | |
+| ONDA_BAIXA | 0.200 – 0.350 | |
+| ONDA_MEDIA_BAIXA | 0.350 – 0.500 | |
+| ONDA_MEDIA | 0.500 – 0.650 | |
+| ONDA_MEDIA_ALTA | 0.650 – 0.800 | |
+| ONDA_ALTA | 0.800 – 0.920 | |
+| ONDA_ULTRA_ALTA | 0.920 – 1.000 | Frequência máxima |
 
-def atenção_social(sinal_aluno, origem, vizinho, fator=0.5):
-    x1,y1 = origem.coordenada
-    x2,y2 = vizinho.coordenada
-    distancia = math.hypot(x2-x1, y2-y1)
-    sinal = sinal_aluno * fator / (distancia + 1)
-    return max(sinal, 0)
+### Broadcast parabólico
 
+O "professor" (query) emite um sinal. Tokens com frequência próxima ao pico da query recebem mais sinal. A curva é parabólica — tokens distantes no espectro recebem zero.
 
-def propagar_sinal(tokens, intensidade=5, ruído=0, fator_social=0.5):
-    for token in tokens:
-        sinal = atenção_professor(intensidade, token, ruído)
-        token.receber_sinal(sinal)
+```
+σ = I · max(0, 1 − κ · (f_token − f_peak)²)
+```
 
-    for token in tokens:
-        if token.sinal_recebido > 0:
-            for vizinho in tokens:
-                if vizinho != token:
-                    s = atenção_social(token.sinal_recebido, token, vizinho, fator_social)
-                    vizinho.receber_sinal(s)
+- `I` = intensidade
+- `κ` = curvatura (quão seletiva é a convocação)
+- `f_peak` = frequência dominante da query
 
-    return tokens
+### Âncora de contexto (dois ciclos)
 
----
+Ao final de cada ciclo, o sistema gera uma âncora — uma memória da assinatura agregada dos tokens ativados. No ciclo seguinte, a query é misturada com essa âncora:
 
-🔧 Pendências (v0.2.0)
+```
+query_nova = (1 − α) · query + α · âncora
+```
 
-1. Implementar "scan()" explícito
-2. Adicionar raio de vizinhança
-3. Implementar "candidate()" com threshold
-4. Tornar falloff configurável
+Isso cria continuidade entre turnos, como um fio que conecta os ciclos sem reiniciar o estado.
 
----
+### NEC — Núcleo Emocional-Cognitivo
 
-🚀 5. Roadmap
+O NEC é um bloco de 5 estágios que processa a entrada e gera uma resposta **por estado interno**, sem LLM:
 
-v0.1.0
+1. **Estrutura Emocional** — calcula valência, intensidade, coerência, ativação, carga a partir das frequências dos tokens ativados
+2. **Estado Atual** — detecta se o contexto mudou de natureza (`flag_salto`) ou continua em fluxo
+3. **Referência Associativa** — mede novidade (`delta_novidade`) e separa tokens em D1 (familiar novo) e D2 (familiar conhecido)
+4. **Projeção de Possíveis** — seleciona modo: `exploratório`, `confirmatório`, `adaptativo`, `tenso` ou `estável`
+5. **Geração por Estado** — monta resposta a partir de templates do modo + tokens-chave ativados
 
-- Base funcional
-- Simulação inicial
-
-v0.2.0
-
-- Primitivas completas
-- Otimização de complexidade
-
-v0.3.0
-
-- Integração com PyTorch / JAX
-- Benchmarks
-
-v1.0.0
-
-- Publicação no PyPI
-- Paper técnico
+O Operador Θ combina os três primeiros estágios em um campo P normalizado que guia a geração.
 
 ---
 
-📐 6. Especificação Técnica
+## Como rodar
 
-Scan
+```bash
+# Instalar
+pip install -e .
 
-coordinate_map = { token.nome: token.coordenada }
+# Pipeline básico
+python examples/prototipo_entrada.py
 
----
+# Demo do NEC com múltiplos ciclos
+python examples/nec_demo.py
 
-Broadcast (falloff)
+# Testes
+python -m pytest tests/ -v
 
-- Quadrático
-- Raiz
-- Linear
-
----
-
-Candidate
-
-σ ≥ threshold
-
----
-
-Propagação
-
-σᵢⱼ = σᵢ · φ / (d + 1)
+# Visualizador interativo
+# Abrir examples/visualizador.html no navegador
+```
 
 ---
 
-Diferença para Transformer
+## Estado atual
 
-Transformer| analog-attention
-Busca global| Endereçamento direto
-Similaridade| Coordenadas
-O(n²)| O(k)
-Softmax| Falloff espacial
+| Módulo | Status |
+|---|---|
+| Tokenizador + BASE | estável |
+| Assinatura de frequência | estável |
+| Broadcast parabólico | estável |
+| Propagação harmônica | estável |
+| Âncora de contexto | estável |
+| Pipeline completo | estável |
+| NEC v0.1 | funcionando |
+| Visualizador HTML | funcionando |
 
----
-
-📁 6.3 Estrutura de Pastas
-
-analog-attention/
-├── analog_attention/
-├── extensions/
-├── tests/
-├── examples/
-├── README.md
-├── LICENSE
-└── pyproject.toml
+**37 testes passando.**
 
 ---
 
-📜 7. Licença
+## Roadmap
 
-GPL-3.0
-
-Atribuição obrigatória:
-
-Este software foi desenvolvido por:
-Zaqueu Ribeiro da Costa
-
-Qualquer uso público, acadêmico ou comercial deve incluir
-crédito visível ao autor.
-
-Você pode:
-
-- Usar
-- Modificar
-- Distribuir
-
-Desde que mantenha a mesma licença.
+- **v0.1** — base completa, NEC funcional (atual)
+- **v0.2** — refinamento da geração por estado, schema BASA real
+- **v0.3** — interface de tempo real, benchmarks de frequência
+- **v1.0** — publicação, documentação técnica completa
 
 ---
 
-🔄 Status
+## Licença
 
-🚧 Em desenvolvimento ativo
+GPL-3.0 — Qualquer uso público, acadêmico ou comercial deve incluir crédito visível ao autor:
 
----
+**Zaqueu Ribeiro da Costa**
